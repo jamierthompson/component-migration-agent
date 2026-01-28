@@ -1,0 +1,75 @@
+{
+  "$schema": "./migration.schema.json",
+  "name": "system-zero-migration",
+  "description": "Migrate System Zero from inline styles to CSS Variables + CSS Modules",
+  
+  "source": {
+    "type": "inline-styles",
+    "entry": "./src/components",
+    "include": ["**/*.tsx", "**/*.jsx"],
+    "exclude": ["**/*.test.*", "**/*.stories.*"]
+  },
+  
+  "target": {
+    "type": "css-variables",
+    "tokenOutput": "./src/tokens",
+    "componentOutput": "./src/components",
+    "options": {
+      "cssModules": true,
+      "preserveInlineForDynamic": true,
+      "generateTypeScript": true
+    }
+  },
+  
+  "tokens": {
+    "prefix": "sz",
+    "categories": {
+      "colors": {
+        "prefix": "color",
+        "semantic": true
+      },
+      "spacing": {
+        "prefix": "space",
+        "scale": [0, 4, 8, 12, 16, 24, 32, 48, 64, 96, 128]
+      },
+      "typography": {
+        "prefix": "font"
+      },
+      "radii": {
+        "prefix": "radius",
+        "scale": [0, 2, 4, 6, 8, 12, 16, 9999]
+      },
+      "shadows": {
+        "prefix": "shadow"
+      }
+    }
+  },
+  
+  "transforms": {
+    "colorValues": {
+      "strategy": "semantic",
+      "fallback": "closest-match"
+    },
+    "spacingValues": {
+      "strategy": "snap-to-scale",
+      "tolerance": 2
+    },
+    "dynamicStyles": {
+      "strategy": "preserve-inline",
+      "wrapperClass": "dynamic"
+    }
+  },
+  
+  "validation": {
+    "checkApiParity": true,
+    "checkStyleCoverage": true,
+    "checkAccessibility": true,
+    "minCoveragePercent": 95
+  },
+  
+  "output": {
+    "format": "flat",
+    "barrelExports": true,
+    "includeSourceMaps": false
+  }
+}

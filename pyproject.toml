@@ -5,8 +5,6 @@ description = "Multi-agent system for migrating React component styling architec
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "flask>=3.1.2",
-    "requests>=2.32.5",
     "claude-agent-sdk>=0.1.0",
 ]
 

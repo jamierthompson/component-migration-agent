@@ -19,9 +19,14 @@ from claude_agent_sdk.types import (
     UserMessage,
     ResultMessage,
 )
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
 
 from migration_agent.hooks import ToolCallTracker
 from migration_agent.subagents import SUBAGENTS
+
+console = Console()
 
 # Ensure output directories exist
 FILES_DIR = Path("files")
@@ -154,12 +159,13 @@ async def run_migration_agent(user_prompt: str) -> None:
         "PostToolUse": [HookMatcher(hooks=[tracker.post_tool_use_hook])],
     }
 
-    print(f"\n{'='*60}")
-    print("Component Migration Agent")
-    print(f"{'='*60}")
-    print(f"Session logs: {session_dir}")
-    print(f"Output directory: {FILES_DIR}")
-    print(f"{'='*60}\n")
+    console.print()
+    console.print(Panel.fit(
+        "[bold]Component Migration Agent[/bold]",
+        subtitle=f"Session: {session_dir}",
+        border_style="cyan",
+    ))
+    console.print(f"  Output directory: {FILES_DIR}\n", style="dim")
 
     options = ClaudeAgentOptions(
         system_prompt=LEAD_AGENT_PROMPT,
@@ -204,12 +210,12 @@ async def run_migration_agent(user_prompt: str) -> None:
                 if isinstance(event.content, list):
                     for block in event.content:
                         if hasattr(block, "text") and block.text:
-                            print(block.text)
+                            console.print(block.text)
                         elif hasattr(block, "name"):
                             tool_block: ToolUseBlock = block
                             if tool_block.name == "Task":
                                 subagent = tool_block.input.get("subagent_type", "unknown")
-                                print(f"\n🤖 Delegating to: {subagent}")
+                                console.print(f"\n🤖 Delegating to: [bold cyan]{subagent}[/bold cyan]")
 
             elif isinstance(event, UserMessage):
                 # Tool results come back as user messages
@@ -219,7 +225,7 @@ async def run_migration_agent(user_prompt: str) -> None:
 
             elif isinstance(event, ResultMessage):
                 if event.is_error:
-                    print(f"\nError: {event.result}")
+                    console.print(f"\n[bold red]Error:[/bold red] {event.result}")
 
         # Signal stream completion so the prompt generator can exit
         done_event.set()
@@ -227,31 +233,32 @@ async def run_migration_agent(user_prompt: str) -> None:
         transcript.write("\n" + "=" * 60 + "\n")
         transcript.write(f"Session ended: {datetime.now().isoformat()}\n")
 
-    print(f"\n{'='*60}")
-    print("Migration complete!")
-    print(f"{'='*60}")
-    print(f"📁 Analysis: {ANALYSIS_DIR}")
-    print(f"📁 Generated: {GENERATED_DIR}")
-    print(f"📁 Validation: {VALIDATION_DIR}")
-    print(f"📁 Logs: {session_dir}")
+    console.print()
+    console.print(Panel.fit(
+        "[bold green]Migration complete![/bold green]",
+        border_style="green",
+    ))
+    console.print(f"  Analysis:   {ANALYSIS_DIR}", style="dim")
+    console.print(f"  Generated:  {GENERATED_DIR}", style="dim")
+    console.print(f"  Validation: {VALIDATION_DIR}", style="dim")
+    console.print(f"  Logs:       {session_dir}", style="dim")
 
 
 def main():
     """Interactive entry point."""
     import asyncio
 
-    print("\nComponent Migration Agent")
-    print("-" * 40)
-    print("Example prompts:")
-    print('  "Migrate ./src/components from inline styles to CSS Variables"')
-    print('  "Convert the Button component from Tailwind to CSS Modules"')
-    print('  "Analyze ./lib and create a token extraction plan"')
-    print("-" * 40)
+    console.print()
+    console.print("[bold]Component Migration Agent[/bold]")
+    console.print("[dim]Example prompts:[/dim]")
+    console.print('  "Migrate ./src/components from inline styles to CSS Variables"', style="dim")
+    console.print('  "Convert the Button component from Tailwind to CSS Modules"', style="dim")
+    console.print('  "Analyze ./lib and create a token extraction plan"', style="dim")
 
-    user_input = input("\nWhat would you like to migrate? \n> ").strip()
+    user_input = console.input("\n[bold]What would you like to migrate?[/bold]\n> ").strip()
 
     if not user_input:
-        print("No input provided. Exiting.")
+        console.print("No input provided. Exiting.", style="yellow")
         return
 
     asyncio.run(run_migration_agent(user_input))

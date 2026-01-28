@@ -12,6 +12,9 @@ from claude_agent_sdk.types import (
     PreToolUseHookInput,
     PostToolUseHookInput,
 )
+from rich.console import Console
+
+console = Console()
 
 
 class ToolCallTracker:
@@ -29,6 +32,7 @@ class ToolCallTracker:
     def __init__(self, log_path: Path):
         self.log_path = log_path
         self.call_stack: list[str] = []  # Track nested agent calls
+        self._spinners: list = []  # Stack of active Status spinners
 
         # Ensure parent directory exists
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -81,13 +85,19 @@ class ToolCallTracker:
 
         # Print progress indicator
         if tool_name == "Task":
-            print(f"  ↳ Starting {tool_input.get('subagent_type', 'subagent')}...")
+            subagent = tool_input.get("subagent_type", "subagent")
+            console.print(f"  [cyan]↳[/cyan] Starting [bold]{subagent}[/bold]...")
+            spinner = console.status(
+                f"  [bold cyan]{subagent}[/bold cyan] working...", spinner="dots"
+            )
+            spinner.start()
+            self._spinners.append(spinner)
         elif tool_name in ("Write", "Edit"):
             file_path = tool_input.get("file_path", tool_input.get("path", "unknown"))
-            print(f"  [{agent}] Writing: {file_path}")
+            console.print(f"  [dim][{agent}][/dim] [yellow]Writing:[/yellow] {file_path}")
         elif tool_name == "Read":
             file_path = tool_input.get("file_path", tool_input.get("path", "unknown"))
-            print(f"  [{agent}] Reading: {file_path}")
+            console.print(f"  [dim][{agent}][/dim] [blue]Reading:[/blue] {file_path}")
 
         return {}  # Don't modify tool execution
 
@@ -108,8 +118,10 @@ class ToolCallTracker:
 
         # Pop subagent from stack when Task completes
         if tool_name == "Task" and self.call_stack:
+            if self._spinners:
+                self._spinners.pop().stop()
             completed_agent = self.call_stack.pop()
-            print(f"  ↲ Completed {completed_agent}")
+            console.print(f"  ✅ Completed [bold]{completed_agent}[/bold]")
 
         entry = {
             "type": "post_tool_use",

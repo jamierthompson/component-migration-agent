@@ -5,6 +5,7 @@ A multi-agent system for migrating React component libraries
 between styling architectures.
 """
 
+import asyncio
 from collections.abc import AsyncIterable
 from datetime import datetime
 from pathlib import Path
@@ -100,17 +101,24 @@ def create_session_log_dir() -> Path:
     return session_dir
 
 
-async def create_prompt_stream(user_prompt: str) -> AsyncIterable[dict[str, Any]]:
+async def create_prompt_stream(
+    user_prompt: str, done_event: asyncio.Event
+) -> AsyncIterable[dict[str, Any]]:
     """
     Convert a string prompt to an async iterable for streaming mode.
 
     Hooks require streaming mode (bidirectional communication) to work.
     The CLI needs to call back to Python for hook execution.
+
+    The stream must remain open until query processing completes,
+    otherwise hook callbacks will fail with "Stream closed" errors.
     """
     yield {
         "type": "user",
         "message": {"role": "user", "content": user_prompt},
     }
+    # Keep stream alive for hook callbacks until query completes
+    await done_event.wait()
 
 
 def format_message(message: AssistantMessage | UserMessage) -> str:
@@ -176,10 +184,14 @@ async def run_migration_agent(user_prompt: str) -> None:
         transcript.write(f"User prompt: {user_prompt}\n")
         transcript.write("=" * 60 + "\n\n")
 
+        # Event to signal when query processing completes
+        # The prompt stream must stay open for hooks to work
+        done_event = asyncio.Event()
+
         # Use streaming mode (AsyncIterable prompt) to enable hooks
         # Hooks require bidirectional communication between CLI and Python
         async for event in query(
-            prompt=create_prompt_stream(user_prompt),
+            prompt=create_prompt_stream(user_prompt, done_event),
             options=options,
         ):
             if isinstance(event, AssistantMessage):
@@ -208,6 +220,9 @@ async def run_migration_agent(user_prompt: str) -> None:
             elif isinstance(event, ResultMessage):
                 if event.is_error:
                     print(f"\nError: {event.result}")
+
+        # Signal stream completion so the prompt generator can exit
+        done_event.set()
 
         transcript.write("\n" + "=" * 60 + "\n")
         transcript.write(f"Session ended: {datetime.now().isoformat()}\n")

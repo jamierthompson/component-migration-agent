@@ -5,8 +5,10 @@ A multi-agent system for migrating React component libraries
 between styling architectures.
 """
 
+from collections.abc import AsyncIterable
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from claude_agent_sdk import query, HookMatcher
 from claude_agent_sdk.types import (
@@ -98,6 +100,19 @@ def create_session_log_dir() -> Path:
     return session_dir
 
 
+async def create_prompt_stream(user_prompt: str) -> AsyncIterable[dict[str, Any]]:
+    """
+    Convert a string prompt to an async iterable for streaming mode.
+
+    Hooks require streaming mode (bidirectional communication) to work.
+    The CLI needs to call back to Python for hook execution.
+    """
+    yield {
+        "type": "user",
+        "message": {"role": "user", "content": user_prompt},
+    }
+
+
 def format_message(message: AssistantMessage | UserMessage) -> str:
     """Format a message for the transcript."""
     role = "assistant" if isinstance(message, AssistantMessage) else "user"
@@ -161,8 +176,10 @@ async def run_migration_agent(user_prompt: str) -> None:
         transcript.write(f"User prompt: {user_prompt}\n")
         transcript.write("=" * 60 + "\n\n")
 
+        # Use streaming mode (AsyncIterable prompt) to enable hooks
+        # Hooks require bidirectional communication between CLI and Python
         async for event in query(
-            prompt=user_prompt,
+            prompt=create_prompt_stream(user_prompt),
             options=options,
         ):
             if isinstance(event, AssistantMessage):

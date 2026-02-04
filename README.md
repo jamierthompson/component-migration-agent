@@ -56,10 +56,21 @@ uv sync
 export ANTHROPIC_API_KEY="your-api-key"
 
 # Run the agent
-uv run python migration_agent/agent.py
+migration-agent
 
 # Example prompt:
 # "Migrate the components in ./src/components from inline styles to CSS Variables"
+```
+
+## Demo Mode
+
+For recording videos or demonstrations, use the demo command which simulates the migration workflow with controlled timing:
+
+```bash
+migration-demo
+
+# Adjust speed (0.5 = faster, 2.0 = slower)
+migration-demo --speed 0.8
 ```
 
 ## Output Structure

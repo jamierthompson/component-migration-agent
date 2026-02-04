@@ -23,6 +23,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
+from migration_agent.banner import print_banner
 from migration_agent.hooks import ToolCallTracker
 from migration_agent.subagents import SUBAGENTS
 
@@ -248,8 +249,8 @@ def main():
     """Interactive entry point."""
     import asyncio
 
-    console.print()
-    console.print("[bold]Component Migration Agent[/bold]")
+    console.clear()
+    print_banner()
     console.print("[dim]Example prompts:[/dim]")
     console.print('  "Migrate ./src/components from inline styles to CSS Variables"', style="dim")
     console.print('  "Convert the Button component from Tailwind to CSS Modules"', style="dim")
